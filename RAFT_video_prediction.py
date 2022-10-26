@@ -5,6 +5,7 @@ import cv2
 import glob
 import numpy as np
 import torch
+import time
 from PIL import Image
 from skimage.color import rgba2rgb
 
@@ -69,25 +70,34 @@ def RAFT_video_prediction(args, video_path, fps_out, img_start, img_step, step_v
         filename = os.path.join(video_path,
                                 video_path.split("\\")[-1] + f"_RAFT_s{img_start}_f{fps_out}_k{img_step}.avi")
         out = cv2.VideoWriter(filename, cv2.VideoWriter_fourcc(*'DIVX'), fps_out, frameSize)
+        time_lst = []
+        counter = 0
         for imfile1, imfile2 in zip(images[img_start:-img_step], images[img_start+img_step:]):
             image1 = load_image(imfile1)
             image2 = load_image(imfile2)
 
             padder = InputPadder(image1.shape)
             image1, image2 = padder.pad(image1, image2)
-
+            start = time.time()
             flow_low, flow_up = model(image1, image2, iters=20, test_mode=True)
+            end = time.time()
+            elapsed_time = end-start
+            time_lst.append(elapsed_time)
+            print(f"Elapsed time of iter {counter}: {elapsed_time}")
             out = viz(image1, flow_up, out, step_viz)
+            counter += 1
+        print(f"Average elapsed time: {np.mean(time_lst)}")
         out.release()
 
 
 if __name__ == '__main__':
     # User input
     demo_folder = "D:\\AirSim simulator\\FDD\\Optical flow\\example_images\\Coen_City_1024_576_2"
+    # demo_folder = "D:\\AirSim simulator\\FDD\\Optical flow\\example_images\\Coen_city_512_288"
     # demo_folder = "D:\\AirSim simulator\\FDD\\Optical flow\\example_images\\Coen_city_256_144"
     # demo_folder = "D:\\AirSim simulator\\FDD\\Optical flow\\RAFT\\demo-frames_2"
     demo_model = "models//raft-things.pth"
-    video_storage_folder = os.path.join("D:\\AirSim simulator\\FDD\\Optical flow\\OpenCV_sparse\\video_storage",
+    video_storage_folder = os.path.join("D:\\AirSim simulator\\FDD\\Optical flow\\video_storage",
                                         demo_folder.split("\\")[-1])
     fps_out = 30
     img_start = 30
